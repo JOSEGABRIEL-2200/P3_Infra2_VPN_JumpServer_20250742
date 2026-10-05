@@ -1,0 +1,187 @@
+! Running-config del R-CLIENTE - P3 Infraestructura 2 - Jose Gabriel Feliz Maria 2025-0742
+! Se obtuvo con "| exclude isakmp key" para no publicar la clave precompartida de la VPN.
+! En "crypto isakmp policy 10" no aparecen "encryption des", "hash sha" ni "lifetime 86400"
+! porque son los valores por defecto de IOS.
+R-CLIENTE#show running-config | exclude isakmp key
+Building configuration...
+
+
+Current configuration : 2836 bytes
+!
+version 15.7
+service timestamps debug datetime msec
+service timestamps log datetime msec
+service password-encryption
+!
+hostname R-CLIENTE
+!
+boot-start-marker
+boot-end-marker
+!
+!
+enable secret 5 $1$BoCx$qIFBPaVToeS/EYePbf03I0
+!
+no aaa new-model
+!
+!
+!
+mmi polling-interval 60
+no mmi auto-configure
+no mmi pvc
+mmi snmp-timeout 180
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+
+
+!
+ip dhcp excluded-address 10.7.42.1 10.7.42.9
+!
+ip dhcp pool USUARIOS-VLAN10
+ network 10.7.42.0 255.255.255.128
+ default-router 10.7.42.1
+ dns-server 8.8.8.8 8.8.4.4
+!
+ip dhcp pool USR-SIN-PRIVILEGIOS
+ host 10.7.42.10 255.255.255.128
+ client-identifier 0100.0c29.2b94.c3
+ default-router 10.7.42.1
+ dns-server 8.8.8.8 8.8.4.4
+!
+ip dhcp pool USR-CON-PRIVILEGIOS
+ host 10.7.42.20 255.255.255.128
+ client-identifier 0100.5056.c000.08
+ default-router 10.7.42.1
+ dns-server 8.8.8.8 8.8.4.4
+!
+!
+!
+no ip domain lookup
+ip domain name itla.lab
+ip cef
+no ipv6 cef
+!
+multilink bundle-name authenticated
+!
+!
+!
+!
+!
+!
+!
+!
+!
+username admin privilege 15 secret 5 $1$9GQv$qZ/OkQu0sW0axJN1128ku.
+!
+redundancy
+!
+!
+!
+!
+!
+!
+!
+crypto isakmp policy 10
+ authentication pre-share
+ group 14
+!
+!
+crypto ipsec transform-set TS-FORTINET esp-des esp-sha-hmac
+ mode tunnel
+!
+!
+!
+crypto map CMAP-FORTINET 10 ipsec-isakmp
+ description VPN Site-to-Site hacia FGT-SERVIDOR
+ set peer 200.7.42.6
+ set security-association lifetime seconds 43200
+ set transform-set TS-FORTINET
+ set pfs group14
+ match address VPN-TRAFICO
+!
+!
+!
+!
+!
+interface Ethernet0/0
+ description WAN-ISP (IP publica sitio Cliente)
+ ip address 200.7.42.2 255.255.255.252
+ ip nat outside
+ ip virtual-reassembly in
+ duplex auto
+ crypto map CMAP-FORTINET
+!
+interface Ethernet0/1
+ description LAN-USUARIOS (VLAN 10 via SW-A)
+ ip address 10.7.42.1 255.255.255.128
+ ip nat inside
+ ip virtual-reassembly in
+ duplex auto
+!
+interface Ethernet0/2
+ description SIN-USO
+ no ip address
+ shutdown
+ duplex auto
+!
+interface Ethernet0/3
+ description SIN-USO
+ no ip address
+ shutdown
+ duplex auto
+!
+ip forward-protocol nd
+!
+!
+no ip http server
+no ip http secure-server
+ip nat inside source list NAT-LAN-USUARIOS interface Ethernet0/0 overload
+ip route 0.0.0.0 0.0.0.0 200.7.42.1
+ip ssh version 2
+!
+ip access-list extended NAT-LAN-USUARIOS
+ deny   ip 10.7.42.0 0.0.0.127 10.7.42.128 0.0.0.15
+ permit ip 10.7.42.0 0.0.0.127 any
+ip access-list extended VPN-TRAFICO
+ permit ip 10.7.42.0 0.0.0.127 10.7.42.128 0.0.0.15
+!
+ipv6 ioam timestamp
+!
+!
+access-list 20 remark Solo el usuario con privilegios administra el router
+access-list 20 permit 10.7.42.20
+!
+control-plane
+!
+!
+!
+!
+!
+!
+!
+banner motd ^CR-CLIENTE - Acceso restringido. P3 Infra 2 - 2025-0742^C
+!
+line con 0
+ password 7 030752180500
+ logging synchronous
+ login
+line aux 0
+line vty 0 4
+ access-class 20 in
+ login local
+ transport input ssh
+!
+!
+end

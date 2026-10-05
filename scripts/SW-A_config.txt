@@ -1,0 +1,80 @@
+! =====================================================================
+! SW-A - Switch Cisco IOL L2 - P3 Infraestructura 2 (sitio Cliente)
+! Jose Gabriel Feliz Maria - 2025-0742
+! VLAN 10 (USUARIOS): e0/0 hacia R-CLIENTE, e0/1 usuario sin privilegios
+! (VM Windows 10, Cloud2) y e0/2 usuario con privilegios (PC host, Cloud4).
+! Port-security maximo 3 MAC por puerto de usuario (por cada nube llegan
+! el equipo del usuario y la interfaz de la VM de PNETLab).
+! Puerto sin uso en la VLAN 999 y apagado. Claves de laboratorio.
+! =====================================================================
+
+! ---------- PARTE 1: VLAN y puertos ----------
+enable
+configure terminal
+hostname SW-A
+no ip domain-lookup
+vlan 10
+ name USUARIOS
+vlan 999
+ name SIN-USO
+exit
+interface Ethernet0/0
+ description ENLACE-R-CLIENTE-e0/1
+ switchport mode access
+ switchport access vlan 10
+ spanning-tree portfast edge
+ no shutdown
+interface Ethernet0/1
+ description USUARIO-SIN-PRIVILEGIOS (Windows 10 - Cloud2)
+ switchport mode access
+ switchport access vlan 10
+ switchport port-security maximum 3
+ switchport port-security violation restrict
+ switchport port-security mac-address sticky
+ switchport port-security
+ spanning-tree portfast edge
+ spanning-tree bpduguard enable
+ no shutdown
+interface Ethernet0/2
+ description USUARIO-CON-PRIVILEGIOS (PC host - Cloud4)
+ switchport mode access
+ switchport access vlan 10
+ switchport port-security maximum 3
+ switchport port-security violation restrict
+ switchport port-security mac-address sticky
+ switchport port-security
+ spanning-tree portfast edge
+ spanning-tree bpduguard enable
+ no shutdown
+interface Ethernet0/3
+ description SIN-USO
+ switchport mode access
+ switchport access vlan 999
+ shutdown
+exit
+interface Vlan10
+ description GESTION-SW-A
+ ip address 10.7.42.2 255.255.255.128
+ no shutdown
+exit
+
+! ---------- PARTE 2: seguridad basica ----------
+service password-encryption
+enable secret cisco123
+banner motd #SW-A - Acceso restringido. P3 Infra 2 - 2025-0742#
+ip domain-name itla.lab
+username admin privilege 15 secret cisco123
+crypto key generate rsa general-keys modulus 2048
+ip ssh version 2
+access-list 20 remark Solo el usuario con privilegios administra el switch
+access-list 20 permit host 10.7.42.20
+line console 0
+ password cisco
+ login
+ logging synchronous
+line vty 0 4
+ access-class 20 in
+ login local
+ transport input ssh
+end
+write memory

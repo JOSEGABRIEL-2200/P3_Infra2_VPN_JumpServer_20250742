@@ -1,0 +1,59 @@
+! =====================================================================
+! ISP - Router Cisco IOL L3 - P3 Infraestructura 2
+! Jose Gabriel Feliz Maria - 2025-0742
+! Simula el proveedor de Internet: entrega las IPs publicas a R-CLIENTE
+! y al FortiGate, y les da salida a Internet con NAT (PAT) por e0/2.
+! No conoce las redes privadas 10.7.42.x (igual que el Internet real).
+! La IP publica del FortiGate (200.7.42.6) se publica en la red de
+! gestion como 192.168.182.71 para administrar su GUI desde el PC host
+! (el FortiGate no tiene interfaz libre para gestion por la licencia).
+! Claves de laboratorio.
+! =====================================================================
+
+! ---------- PARTE 1: red y NAT ----------
+enable
+configure terminal
+hostname ISP
+no ip domain-lookup
+no service config
+interface Ethernet0/0
+ description R-CLIENTE-e0/0 (IP publica sitio Cliente)
+ ip address 200.7.42.1 255.255.255.252
+ ip nat inside
+ no shutdown
+interface Ethernet0/1
+ description FGT-SERVIDOR-port1 (IP publica sitio Servidor)
+ ip address 200.7.42.5 255.255.255.252
+ ip nat inside
+ no shutdown
+interface Ethernet0/2
+ description INTERNET (Cloud0 - NAT de VMware)
+ ip address 192.168.182.70 255.255.255.0
+ ip nat outside
+ no shutdown
+interface Ethernet0/3
+ description SIN-USO
+ shutdown
+exit
+ip route 0.0.0.0 0.0.0.0 192.168.182.2
+access-list 1 permit 200.7.42.0 0.0.0.7
+ip nat inside source list 1 interface Ethernet0/2 overload
+ip nat inside source static 200.7.42.6 192.168.182.71
+
+! ---------- PARTE 2: seguridad basica ----------
+service password-encryption
+enable secret cisco123
+banner motd #ISP - Acceso restringido. P3 Infra 2 - 2025-0742#
+ip domain-name itla.lab
+username admin privilege 15 secret cisco123
+crypto key generate rsa general-keys modulus 2048
+ip ssh version 2
+line console 0
+ password cisco
+ login
+ logging synchronous
+line vty 0 4
+ login local
+ transport input ssh
+end
+write memory

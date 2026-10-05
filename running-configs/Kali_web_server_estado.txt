@@ -1,0 +1,21 @@
+# Kali (Web Server "Sistema de Caja") - P3 Infraestructura 2 - 2025-0742
+# Salida real de la terminal del Kali (captura 42).
+
+┌──(jose㉿kali)-[~]
+└─$ ip -br a show eth1
+eth1             UNKNOWN        10.7.42.138/29 fe80::68da:6b84:534d:d79a/64
+
+└─$ sudo ss -tln | grep -E ':(22|443|3389)\s'
+LISTEN 0      128          0.0.0.0:22         0.0.0.0:*
+LISTEN 0      128             [::]:22            [::]:*
+LISTEN 0      511                *:443              *:*
+LISTEN 0      2                  *:3389             *:*
+
+└─$ ip -br a
+lo               UNKNOWN        127.0.0.1/8 ::1/128
+eth0             DOWN
+eth1             UNKNOWN        10.7.42.138/29 fe80::68da:6b84:534d:d79a/64
+docker0          DOWN           172.17.0.1/16
+
+# eth0 (adaptador con Internet, usado solo para instalar paquetes) esta desconectado:
+# el Web Server solo tiene la LAN 10.7.42.136/29 detras del FortiGate.

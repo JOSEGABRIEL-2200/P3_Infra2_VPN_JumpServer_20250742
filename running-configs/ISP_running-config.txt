@@ -1,0 +1,148 @@
+! Running-config del ISP - P3 Infraestructura 2 - Jose Gabriel Feliz Maria 2025-0742
+! Las dos lineas "ntp server" del final no estan en el script de la practica.
+ISP#show running-config
+Building configuration...
+
+
+Current configuration : 1775 bytes
+!
+version 15.7
+service timestamps debug datetime msec
+service timestamps log datetime msec
+service password-encryption
+!
+hostname ISP
+!
+boot-start-marker
+boot-end-marker
+!
+!
+enable secret 5 $1$23yw$lwUg1Rq3ZJuA0wYr1Wg8a.
+!
+no aaa new-model
+!
+!
+!
+mmi polling-interval 60
+no mmi auto-configure
+no mmi pvc
+mmi snmp-timeout 180
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+
+
+!
+!
+!
+!
+no ip domain lookup
+ip domain name itla.lab
+ip cef
+no ipv6 cef
+!
+multilink bundle-name authenticated
+!
+!
+!
+!
+!
+!
+!
+!
+!
+username admin privilege 15 secret 5 $1$mteM$cNPeSTWhvf/Rpi0yR2Nnm0
+!
+redundancy
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+interface Ethernet0/0
+ description R-CLIENTE-e0/0 (IP publica sitio Cliente)
+ ip address 200.7.42.1 255.255.255.252
+ ip nat inside
+ ip virtual-reassembly in
+ duplex auto
+!
+interface Ethernet0/1
+ description FGT-SERVIDOR-port1 (IP publica sitio Servidor)
+ ip address 200.7.42.5 255.255.255.252
+ ip nat inside
+ ip virtual-reassembly in
+ duplex auto
+!
+interface Ethernet0/2
+ description INTERNET (Cloud0 - NAT de VMware)
+ ip address 192.168.182.70 255.255.255.0
+ ip nat outside
+ ip virtual-reassembly in
+ duplex auto
+!
+interface Ethernet0/3
+ description SIN-USO
+ no ip address
+ shutdown
+ duplex auto
+!
+ip forward-protocol nd
+!
+!
+no ip http server
+no ip http secure-server
+ip nat inside source list 1 interface Ethernet0/2 overload
+ip nat inside source static 200.7.42.6 192.168.182.71
+ip route 0.0.0.0 0.0.0.0 192.168.182.2
+ip ssh version 2
+!
+ipv6 ioam timestamp
+!
+!
+access-list 1 permit 200.7.42.0 0.0.0.7
+!
+control-plane
+!
+!
+!
+!
+!
+!
+!
+banner motd ^CISP - Acceso restringido. P3 Infra 2 - 2025-0742^C
+!
+line con 0
+ password 7 094F471A1A0A
+ logging synchronous
+ login
+line aux 0
+line vty 0 4
+ login local
+ transport input ssh
+!
+ntp server 34.208.249.133
+ntp server pool.ntp.org
+!
+end

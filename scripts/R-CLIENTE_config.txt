@@ -1,0 +1,104 @@
+! =====================================================================
+! R-CLIENTE - Router Cisco IOL L3 - P3 Infraestructura 2
+! Jose Gabriel Feliz Maria - 2025-0742
+! Sitio Cliente: gateway y DHCP de la VLAN 10 (10.7.42.0/25), NAT hacia
+! el ISP y extremo Cisco de la VPN site-to-site con el FortiGate.
+! Cada usuario recibe siempre la misma IP por DHCP (reserva por MAC):
+!   10.7.42.10  usuario sin privilegios (VM Windows 10)
+!   10.7.42.20  usuario con privilegios (PC host)
+! Claves de laboratorio. La clave de la VPN no se publica.
+! =====================================================================
+
+! ---------- PARTE 1: red, DHCP y NAT ----------
+enable
+configure terminal
+hostname R-CLIENTE
+no ip domain-lookup
+interface Ethernet0/0
+ description WAN-ISP (IP publica sitio Cliente)
+ ip address 200.7.42.2 255.255.255.252
+ ip nat outside
+ no shutdown
+interface Ethernet0/1
+ description LAN-USUARIOS (VLAN 10 via SW-A)
+ ip address 10.7.42.1 255.255.255.128
+ ip nat inside
+ no shutdown
+interface range Ethernet0/2 - 3
+ description SIN-USO
+ shutdown
+exit
+ip route 0.0.0.0 0.0.0.0 200.7.42.1
+ip dhcp excluded-address 10.7.42.1 10.7.42.9
+ip dhcp pool USUARIOS-VLAN10
+ network 10.7.42.0 255.255.255.128
+ default-router 10.7.42.1
+ dns-server 8.8.8.8 8.8.4.4
+ip dhcp pool USR-SIN-PRIVILEGIOS
+ host 10.7.42.10 255.255.255.128
+ client-identifier 0100.0c29.2b94.c3
+ default-router 10.7.42.1
+ dns-server 8.8.8.8 8.8.4.4
+ip dhcp pool USR-CON-PRIVILEGIOS
+ host 10.7.42.20 255.255.255.128
+ client-identifier 0100.5056.c000.08
+ default-router 10.7.42.1
+ dns-server 8.8.8.8 8.8.4.4
+exit
+ip access-list extended NAT-LAN-USUARIOS
+ deny   ip 10.7.42.0 0.0.0.127 10.7.42.128 0.0.0.15
+ permit ip 10.7.42.0 0.0.0.127 any
+exit
+ip nat inside source list NAT-LAN-USUARIOS interface Ethernet0/0 overload
+
+! ---------- PARTE 2: seguridad basica ----------
+service password-encryption
+enable secret cisco123
+banner motd #R-CLIENTE - Acceso restringido. P3 Infra 2 - 2025-0742#
+ip domain-name itla.lab
+username admin privilege 15 secret cisco123
+crypto key generate rsa general-keys modulus 2048
+ip ssh version 2
+access-list 20 remark Solo el usuario con privilegios administra el router
+access-list 20 permit host 10.7.42.20
+line console 0
+ password cisco
+ login
+ logging synchronous
+line vty 0 4
+ access-class 20 in
+ login local
+ transport input ssh
+end
+write memory
+
+! ---------- PARTE 3: VPN IPsec site-to-site con FGT-SERVIDOR ----------
+! Propuestas alineadas con la licencia de evaluacion del FortiGate
+! (IKEv1, DES/SHA1, DH 14, PFS 14). La clave precompartida NO se publica:
+! se configura aparte con:  crypto isakmp key <CLAVE_VPN> address 200.7.42.6
+configure terminal
+crypto isakmp policy 10
+ encryption des
+ hash sha
+ authentication pre-share
+ group 14
+ lifetime 86400
+exit
+crypto ipsec transform-set TS-FORTINET esp-des esp-sha-hmac
+ mode tunnel
+exit
+ip access-list extended VPN-TRAFICO
+ permit ip 10.7.42.0 0.0.0.127 10.7.42.128 0.0.0.15
+exit
+crypto map CMAP-FORTINET 10 ipsec-isakmp
+ description VPN Site-to-Site hacia FGT-SERVIDOR
+ set peer 200.7.42.6
+ set transform-set TS-FORTINET
+ set pfs group14
+ set security-association lifetime seconds 43200
+ match address VPN-TRAFICO
+exit
+interface Ethernet0/0
+ crypto map CMAP-FORTINET
+end
+write memory

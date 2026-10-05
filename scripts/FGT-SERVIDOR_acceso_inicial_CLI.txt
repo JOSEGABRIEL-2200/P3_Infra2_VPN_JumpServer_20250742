@@ -1,0 +1,27 @@
+# =====================================================================
+# FGT-SERVIDOR - FortiGate VM - P3 Infraestructura 2
+# Jose Gabriel Feliz Maria - 2025-0742
+# Acceso inicial por consola (unica parte por CLI): IP publica en port1,
+# acceso HTTP para abrir la GUI y la ruta por defecto hacia el ISP (sin
+# ella el FortiGate no puede responderle al PC de gestion). El resto de
+# la configuracion se hace por GUI.
+# Login inicial: admin / (sin contrasena) -> pide una contrasena nueva.
+# La GUI se abre desde el PC host en http://192.168.182.71 (el ISP
+# publica ahi la IP 200.7.42.6 del FortiGate).
+# =====================================================================
+config system interface
+    edit "port1"
+        set mode static
+        set ip 200.7.42.6 255.255.255.252
+        set allowaccess ping http
+    next
+end
+config system global
+    set admin-https-redirect disable
+end
+config router static
+    edit 1
+        set gateway 200.7.42.5
+        set device "port1"
+    next
+end
